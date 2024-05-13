@@ -1,17 +1,22 @@
 import argparse
-import json
-import os
-import subprocess
+import datetime
+from typing import Optional
+import sys
+from dotenv import load_dotenv
 
-import yaml
+
 from azure.ai.ml import Input, MLClient, Output, command, dsl, load_component
 from azure.ai.ml.constants import AssetTypes, InputOutputModes
 from azure.ai.ml.dsl import pipeline
 from azure.identity import DefaultAzureCredential
-from dotenv import load_dotenv
+#from prompt_pipeline import VariantsSelector, check_dictionary_contained
+from llmops.common.experiment_cloud_config import ExperimentCloudConfig
+from llmops.common.experiment import load_experiment
+from llmops.common.logger import llmops_logger
 
-AML_EXPERIMENT_NAME = "pf_in_pipeline_experiment"
-AML_PIPELINE_NAME = "my_pipeline"
+logger = llmops_logger("promptflow_in_aml_pipeline")
+
+
 AML_DATASTORE_PATH_PREFIX = (
     "azureml://datastores/workspaceblobstore/paths/pf_in_pipeline_test/"
 )
@@ -82,7 +87,7 @@ def build_pipeline(pipeline_name: str, flow_path: str, input_data_path: str):
         PipelineJob: Azure Machine Learning pipeline job.
     """
     preprocess_component = command(
-        name="preprocess",
+        name="./components/preprocess",
         display_name="Data preparation for Promptflow in a pipeline experiment",
         description="Reads the input data and prepares it for the Promptflow experiment",
         inputs={
@@ -93,7 +98,7 @@ def build_pipeline(pipeline_name: str, flow_path: str, input_data_path: str):
             "output_data_path": Output(type="uri_folder", mode="rw_mount"),
         },
         # The source folder of the component
-        code="./components/",
+        code="./llmops/common/components/",
         command="""python preprocess.py \
                 --input_data_path "${{inputs.input_data_path}}" \
                 --max_records "${{inputs.max_records}}" \
@@ -113,7 +118,7 @@ def build_pipeline(pipeline_name: str, flow_path: str, input_data_path: str):
             "input_data_path": Input(type="uri_folder", mode="rw_mount"),
         },
         # The source folder of the component
-        code="./components/",
+        code="./llmops/common/components/",
         command="""python postprocess.py  \
                 --input_data_path "${{inputs.input_data_path}}" \
                 """,
@@ -132,116 +137,117 @@ def build_pipeline(pipeline_name: str, flow_path: str, input_data_path: str):
 
 
 def prepare_and_execute(
-    subscription_id, build_id, stage, compute_target, data_purpose, flow_to_execute
+    exp_filename: Optional[str] = None,
+    base_path: Optional[str] = None,
+    subscription_id: Optional[str] = None,
+    env_name: Optional[str] = None,
+    compute_target: Optional[str] = None,
 ):
     """
-    Run the evaluation loop by executing evaluation flows.
+    Run the experimentation loop by executing standard flows.
 
-    reads latest evaluation data assets
-    executes evaluation flow against each provided bulk-run
-    executes the flow creating a new evaluation job
-    saves the results in both csv and html format
-
-    Returns:
-        None
-    """
-    main_config = open(f"{flow_to_execute}/llmops_config.json")
-    model_config = json.load(main_config)
-
-    for obj in model_config["envs"]:
-        if obj.get("ENV_NAME") == stage:
-            config = obj
-            break
-
-    resource_group_name = config["RESOURCE_GROUP_NAME"]
-    workspace_name = config["WORKSPACE_NAME"]
-    data_mapping_config = f"{flow_to_execute}/configs/mapping_config.json"
-    standard_flow_path = config["STANDARD_FLOW_PATH"]
-    data_config_path = f"{flow_to_execute}/configs/data_config.json"
-    config_file = open(data_config_path)
-    data_config = json.load(config_file)
-
-    ml_client = MLClient(
-        DefaultAzureCredential(), subscription_id, resource_group_name, workspace_name
-    )
-
-    dataset_name = []
-    for elem in data_config["datasets"]:
-        if "DATA_PURPOSE" in elem and "ENV_NAME" in elem:
-            if stage == elem["ENV_NAME"] and data_purpose == elem["DATA_PURPOSE"]:
-                data_name = elem["DATASET_NAME"]
-                data = ml_client.data.get(name=data_name, label="latest")
-                dataset_name.append(data)
-                break
-
-    # get one data uri for now
-    data_path = dataset_name[0]
-
-    experiment_name = f"{flow_to_execute}_{stage}"
-
-    flow_path = f"{flow_to_execute}/{standard_flow_path}/flow.dag.yaml"
-    build_pipeline("mypipeline", flow_path, data_path)
-
-    pipeline_definition = build_pipeline(
-        pipeline_name="mypipeline",
-        flow_path=flow_path,
-        input_data_path=data_path,
-    )
-
-    pipeline_job = pipeline_definition(name="mypipeline", input_data_path=data_path)
-    pipeline_job.settings.default_compute = compute_target
-    # Execute the ML Pipeline
-    job = ml_client.jobs.create_or_update(
-        pipeline_job,
-        experiment_name=experiment_name,
-    )
-
-    ml_client.jobs.stream(name=job.name)
-
-
-if __name__ == "__main__":
-    """
-    Run the main evaluation loop by executing evaluation flows.
+    reads latest experiment data assets.
+    identifies all variants across all nodes.
+    executes the flow creating a new job using
+    unique variant combination across nodes.
+    saves the results in both csv and html format.
+    saves the job ids in text file for later use.
 
     Returns:
         None
     """
-    parser = argparse.ArgumentParser("prompt_evaluation")
+    config = ExperimentCloudConfig(subscription_id=subscription_id, env_name=env_name)
+    experiment = load_experiment(
+        filename=exp_filename, base_path=base_path, env=config.environment_name
+    )
+
+    flow_detail = experiment.get_flow_detail()
+
+    logger.info(f"Running experiment {experiment.name}")
+    for mapped_dataset in experiment.datasets:
+        logger.info(f"Using dataset {mapped_dataset.dataset.source}")
+        dataset = mapped_dataset.dataset
+        column_mapping = mapped_dataset.mappings
+
+        ml_client = MLClient(
+            DefaultAzureCredential(), subscription_id, config.resource_group_name, config.workspace_name
+        )
+
+        experiment_name = f"{experiment.name}_{env_name}"
+        input_data_uri_file = ml_client.data.get(name=dataset.name, label="latest")
+
+        flow_path = f"{flow_detail.flow_path}/flow.dag.yaml"
+        build_pipeline("mypipeline", flow_path, input_data_uri_file)
+
+        pipeline_definition = build_pipeline(
+            pipeline_name="mypipeline",
+            flow_path=flow_path,
+            input_data_path=input_data_uri_file,
+        )
+
+        pipeline_job = pipeline_definition(name="mypipeline", input_data_path=input_data_uri_file)
+        pipeline_job.settings.default_compute = compute_target
+        # Execute the ML Pipeline
+        job = ml_client.jobs.create_or_update(
+            pipeline_job,
+            experiment_name=experiment_name,
+        )
+
+        ml_client.jobs.stream(name=job.name)
+
+
+def main():
+    """
+    main() function to run experiment or evaluations.
+
+    Returns:
+        None
+    """
+    parser = argparse.ArgumentParser("prompt_bulk_run")
+    parser.add_argument(
+        "--file",
+        type=str,
+        help="The experiment file. Default is 'experiment.yaml'",
+        required=False,
+        default="experiment.yaml",
+    )
+
     parser.add_argument(
         "--subscription_id",
         type=str,
-        help="Azure subscription id",
-        required=True,
+        help="Subscription ID, overrides the SUBSCRIPTION_ID environment variable",
+        default=None,
     )
     parser.add_argument(
-        "--build_id",
+        "--base_path",
         type=str,
-        help="Unique identifier for build execution",
+        help="Base path of the use case",
         required=True,
     )
     parser.add_argument(
         "--env_name",
         type=str,
-        help="environment name(dev, test, prod) for execution/deployment",
-        required=True,
+        help="environment name(dev, test, prod) for execution and deployment, overrides the ENV_NAME environment variable",
+        default=None,
     )
-    parser.add_argument(
-        "--data_purpose", type=str, help="data identified by purpose", required=True
-    )
+
     parser.add_argument(
         "--compute_target", type=str, required=True, help="Compute target name"
     )
 
-    parser.add_argument(
-        "--flow_to_execute", type=str, help="flow use case name", required=True
-    )
-
     args = parser.parse_args()
+
     prepare_and_execute(
+        args.file,
+        args.base_path,
         args.subscription_id,
-        args.build_id,
         args.env_name,
         args.compute_target,
-        args.data_purpose,
-        args.flow_to_execute,
     )
+
+
+if __name__ == "__main__":
+    # Load variables from .env file into the environment
+    load_dotenv(override=True)
+
+    main()
