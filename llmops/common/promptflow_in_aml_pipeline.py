@@ -15,15 +15,7 @@ from llmops.common.logger import llmops_logger
 
 logger = llmops_logger("promptflow_in_aml_pipeline")
 
-
-AML_DATASTORE_PATH_PREFIX = (
-    "azureml://datastores/workspaceblobstore/paths/"
-)
-AML_DATASTORE_PREPROCESS_FILE_NAME = "data.jsonl"
-
-
 pipeline_components = []
-
 
 def create_dynamic_evaluation_pipeline(
     pipeline_name,
@@ -48,7 +40,7 @@ def create_dynamic_evaluation_pipeline(
             mode=InputOutputModes.RO_MOUNT,
         )
         preprocess_output_path = Output(
-            path=AML_DATASTORE_PATH_PREFIX, type=AssetTypes.URI_FOLDER, mode="rw_mount"
+            type=AssetTypes.URI_FOLDER, mode="rw_mount"
         )
         preprocess = pipeline_components[0](
             input_data_path=pf_input_path, max_records=2
@@ -56,7 +48,6 @@ def create_dynamic_evaluation_pipeline(
         preprocess.outputs.output_data_path = preprocess_output_path
 
         pf_output = Output(
-            path=AML_DATASTORE_PATH_PREFIX,
             type=AssetTypes.URI_FOLDER,
             mode="rw_mount",
         )
