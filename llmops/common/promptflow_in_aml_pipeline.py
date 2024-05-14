@@ -85,7 +85,7 @@ def build_pipeline(pipeline_name: str, flow_path: str, input_data_path: str):
             "max_records": Input(type="number"),
         },
         outputs={
-            "output_data_path": Output(type="uri_folder", mode="rw_mount"),
+            "output_data_path": Output(type="uri_file", mode="rw_mount"),
         },
         # The source folder of the component
         code="./llmops/common/components/",
