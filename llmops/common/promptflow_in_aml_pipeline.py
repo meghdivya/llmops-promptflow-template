@@ -17,7 +17,7 @@ logger = llmops_logger("promptflow_in_aml_pipeline")
 
 
 AML_DATASTORE_PATH_PREFIX = (
-    "azureml://datastores/workspaceblobstore/paths/pf_in_pipeline_test/"
+    "azureml://datastores/workspaceblobstore/paths/"
 )
 AML_DATASTORE_PREPROCESS_FILE_NAME = "data.jsonl"
 
