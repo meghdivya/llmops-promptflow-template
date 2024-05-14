@@ -34,16 +34,16 @@ def create_dynamic_evaluation_pipeline(
     )
     def evaluation_pipeline(name: str, input_data_path: str):
 
-        pf_input_path = Input(
+        preprocess_input_path = Input(
             path=input_data_path,
             type=AssetTypes.URI_FILE,
             mode=InputOutputModes.RO_MOUNT,
         )
         preprocess_output_path = Output(
-            type=AssetTypes.URI_FILE, mode="rw_mount"
+            type=AssetTypes.URI_FILE, mode=InputOutputModes.DIRECT
         )
         preprocess = pipeline_components[0](
-            input_data_path=pf_input_path, max_records=2
+            input_data_path=preprocess_input_path, max_records=2
         )
         preprocess.outputs.output_data_path = preprocess_output_path
 
