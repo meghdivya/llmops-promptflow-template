@@ -8,9 +8,9 @@ on:
         description: "Execution Environment"
         required: true
         default: "dev"
-      flow_type:
+      use_case_base_path:
         type: string
-        description: "The flow use-case to execute"
+        description: "The base path of the flow use-case to execute"
         required: true
         default: "web_classification"
       deployment_type:
@@ -61,10 +61,9 @@ jobs:
         with:
             step_name: "Register experiment data asset"
             script_parameter: |
-                python llmops.common.promptflow_in_aml_pipeline.py \
+                python -m llmops.common.promptflow_in_aml_pipeline \
                 --subscription_id ${{ steps.subscription_details.outputs.SUBSCRIPTION_ID }} \
                 --env_name ${{ inputs.env_name }} \
-                --data_purpose=training_data \
-                --compute_target= ${{ inputs.compute_target }} 
-                --flow_to_execute ${{ inputs.flow_type }} 
-                --build_id=build1
+                --base_path=${{ inputs.use_case_base_path }} \
+                --compute_target= ${{ inputs.compute_target }} \
+
