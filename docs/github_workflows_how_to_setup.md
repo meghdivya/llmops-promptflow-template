@@ -230,7 +230,7 @@ The second Github workflow [named_entity_recognition_ci_dev_workflow.yml](../.gi
 
 The optional third Github workflow [named_entity_recognition_post_prod_eval.yml](../.github/workflows/named_entity_recognition_post_prod_eval.yml) need to be executed manually after the deployment of the Prompt flow flow to production and collecting production logs (example log file - [production_log.jsonl](../named_entity_recognition/data/production_log.jsonl)). This workflow is used to evaluate the Prompt flow flow performance in production.
 
-# TODO add more details about the pf in aml pipeline workflow
+The optional Github workflow [web_classification_pf_in_aml_pipeline_workflow.yml](../.github/workflows/web_classification_pf_in_aml_pipeline_workflow.yml) is used to run the promptflow in AML Pipeline as a parallel component. 
 
 More details about how to create a basic Github workflows in general can be found [here](https://docs.github.com/en/actions/using-workflows).
 
