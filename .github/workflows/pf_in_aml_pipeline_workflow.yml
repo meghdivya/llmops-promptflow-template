@@ -13,10 +13,6 @@ on:
         description: "The base path of the flow use-case to execute"
         required: true
         default: "web_classification"
-      deployment_type:
-        type: string
-        description: "Determine type of deployment - aml, aks, docker, webapp"
-        required: true
       compute_target:
         type: string
         description: "Azure ML studio Compute target "
