@@ -60,6 +60,6 @@ jobs:
                 python -m llmops.common.promptflow_in_aml_pipeline \
                 --subscription_id ${{ steps.subscription_details.outputs.SUBSCRIPTION_ID }} \
                 --env_name ${{ inputs.env_name || 'dev' }} \
-                --base_path=${{ inputs.use_case_base_path || 'web_classification'}} \
-                --compute_target= ${{ inputs.compute_target || 'llmops-pf-cluster' }} \
+                --base_path ${{ inputs.use_case_base_path || 'web_classification'}} \
+                --compute_target ${{ inputs.compute_target || 'llmops-pf-cluster' }} \
 
