@@ -1,7 +1,6 @@
 import argparse
 import datetime
 from typing import Optional
-import sys
 from dotenv import load_dotenv
 
 
@@ -39,24 +38,15 @@ def create_dynamic_evaluation_pipeline(
             type=AssetTypes.URI_FILE,
             mode=InputOutputModes.RO_MOUNT,
         )
-        # preprocess_output_path = Output(
-        #     type=AssetTypes.URI_FILE, mode=InputOutputModes.DIRECT
-        # )
+
         preprocess = pipeline_components[0](
             input_data_path=preprocess_input_path, max_records=2
         )
-        #preprocess.outputs.output_data_path = preprocess_output_path
-
-        # pf_output = Output(
-        #     type=AssetTypes.URI_FOLDER,
-        #     mode="rw_mount",
-        # )
 
         experiment = pipeline_components[1](
             data=preprocess.outputs.output_data_path,
             url="${data.url}",
         )
-        #experiment.outputs.flow_outputs = pf_output
 
         postprocess = pipeline_components[2](
             input_data_path=experiment.outputs.flow_outputs,
