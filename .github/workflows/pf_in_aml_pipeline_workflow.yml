@@ -61,8 +61,6 @@ jobs:
         uses: ./.github/actions/execute_script
         with:
             step_name: "Register experiment data asset"
-            RESOURCE_GROUP_NAME: ${{ env.RESOURCE_GROUP_NAME }}
-            WORKSPACE_NAME: ${{ env.WORKSPACE_NAME }}
             script_parameter: |
                 python -m llmops.common.promptflow_in_aml_pipeline \
                 --subscription_id ${{ steps.subscription_details.outputs.SUBSCRIPTION_ID }} \
