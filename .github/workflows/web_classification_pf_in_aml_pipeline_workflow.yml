@@ -1,4 +1,4 @@
-name: pf_in_aml_pipeline_workflow.yml
+name: web_classification_pf_in_aml_pipeline_workflow.yml
 
 on:
   workflow_call:
@@ -13,10 +13,6 @@ on:
         description: "The base path of the flow use-case to execute"
         required: true
         default: "web_classification"
-      compute_target:
-        type: string
-        description: "Azure ML studio Compute target "
-        required: true
     secrets:
       azure_credentials:
         description: "service principal authentication to Azure"
@@ -34,6 +30,7 @@ jobs:
     env:
       RESOURCE_GROUP_NAME: ${{ vars.RESOURCE_GROUP_NAME }}
       WORKSPACE_NAME: ${{ vars.WORKSPACE_NAME }}
+      COMPUTE_TARGET: ${{ vars.COMPUTE_TARGET }}
     steps:
       - name: Checkout Actions
         uses: actions/checkout@v4
@@ -54,17 +51,15 @@ jobs:
           echo "SUBSCRIPTION_ID=$subscriptionId" >> $GITHUB_OUTPUT
 
         #=====================================
-        # Registers experiment dataset in Azure ML as Data Asset
-        # Reads appropriate field values from data_config.json based on environment and data purpose
+        # Run Promptflow in AML Pipeline
         #=====================================      
-      - name: Register experiment data asset
+      - name: Run Promptflow in AML Pipeline
         uses: ./.github/actions/execute_script
         with:
-            step_name: "Register experiment data asset"
+            step_name: "Run Promptflow in AML Pipeline"
             script_parameter: |
                 python -m llmops.common.promptflow_in_aml_pipeline \
                 --subscription_id ${{ steps.subscription_details.outputs.SUBSCRIPTION_ID }} \
                 --env_name ${{ inputs.env_name || 'dev' }} \
                 --base_path ${{ inputs.use_case_base_path || 'web_classification'}} \
-                --compute_target ${{ inputs.compute_target || 'llmops-pf-cluster' }} \
 

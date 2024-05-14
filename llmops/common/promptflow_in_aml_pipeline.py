@@ -147,7 +147,6 @@ def prepare_and_execute(
     for mapped_dataset in experiment.datasets:
         logger.info(f"Using dataset {mapped_dataset.dataset.source}")
         dataset = mapped_dataset.dataset
-        column_mapping = mapped_dataset.mappings
 
         ml_client = MLClient(
             DefaultAzureCredential(), subscription_id, config.resource_group_name, config.workspace_name
@@ -166,7 +165,7 @@ def prepare_and_execute(
         )
 
         pipeline_job = pipeline_definition(name="mypipeline", input_data_path=input_data_uri_file)
-        pipeline_job.settings.default_compute = compute_target
+        pipeline_job.settings.default_compute = config.compute_target
         # Execute the ML Pipeline
         job = ml_client.jobs.create_or_update(
             pipeline_job,
