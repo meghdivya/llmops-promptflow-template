@@ -36,7 +36,7 @@ def main():
 
     # Write input_data_df to a jsonl file
     input_data_df.to_json(
-        args.output_data_path + "output_data.jsonl", orient="records", lines=True
+        args.output_data_path, orient="records", lines=True
     )
     print("Successfully written filtered data")
 
